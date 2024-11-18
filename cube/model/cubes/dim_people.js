@@ -20,7 +20,7 @@ cube(`dim_people`, {
     
     salary: {
       sql: `salary`,
-      type: `string`
+      type: `number`
     },
     
     username: {
