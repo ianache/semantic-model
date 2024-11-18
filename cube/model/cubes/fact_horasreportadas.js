@@ -31,6 +31,10 @@ cube(`fact_horasreportadas`, {
   measures: {
     count: {
       type: `count`
+    },
+    hours: {
+      type: `sum`,
+      sql: `hours`
     }
   },
   
