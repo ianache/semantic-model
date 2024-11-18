@@ -35,6 +35,10 @@ cube(`fact_horasreportadas`, {
     hours: {
       type: `sum`,
       sql: `hours`
+    },
+    cost: {
+      type: `sum`,
+      sql: `(dim_people.salary / 168) * hours`
     }
   },
   
