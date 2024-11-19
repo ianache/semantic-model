@@ -24,7 +24,25 @@ cube(`fact_horasreportadas`, {
     
     regdate: {
       sql: `regdate`,
-      type: `time`
+      type: `time`,
+      granularities: {
+        sunday_week: { interval: `1 week`, offset: `-1 day` },
+	fiscal_year: { title: `Federal Fiscal Year in EEUU`, interval: `1 year`, offset: `-3 months` },
+	fiscal_quarter: { title: `Federal Fiscal quarter in EEUU`, interval: `1 quarter`, offset: `-3 months` }
+      }
+    },
+
+    sunday_week: { sql: `${regdate.sunday_week}`, type: `time` },
+    fiscal_year: { sql: `${regdate.fiscal_year}`, type: `time` },
+    fiscal_quarter: { sql: `${regdate.fiscal_quarter}`, type: `time` },
+
+    fiscal_quarter_label: {
+      //sql: ` 
+      //  'FY' || (EXTRACT(YEAR FROM {regdate.fiscal_year}) + 1) |
+      //  '-Q' || EXTRACT(QUARTER FROM {regdate.fiscal_quarter} + INTERVAL '3 MONTHS')
+      //`,
+      sql: `'FY01' || (EXTRACT(YEAR FROM ${regdate.fiscal_quarter}) + 1) || '-Q' || EXTRACT(QUARTER FROM ${regdate.fiscal_quarter})`, 
+      type: `string`
     }
   },
   
