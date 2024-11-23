@@ -34,6 +34,7 @@ services:
     env_file:
       - .env
     environment:
+      NODE_ENV: production
       CUBEJS_EXT_DB_TYPE: cubestore
       CUBEJS_EXT_DB_HOST: cubestore
     depends_on:
@@ -109,3 +110,15 @@ services:
       CUBESTORE_REMOTE_DIR: /cube/data
     volumes:
       - .cubestore:/cube/data
+  #
+  ## Hasura
+  #
+  hasura:
+    image: hasura/graphql-engine:${HASURA_VERSION:-v1.3.2}
+    ports:
+      - "8080:8080"
+    depends_on:
+      - postgres
+      - cube_api
+    env_file:
+      - .env
