@@ -3,11 +3,20 @@ version: "3.7"
 volumes:
   pgstorage-data:
 
+networks:
+  back_network:
+  front_network:
+
 services:
+  #
+  ## Redis (for Caching Layer)
+  #
   redis:
     image: redis:${REDIS_VERSION:-7.0.0}
-    ports:
-      - 6379:6379
+    #ports:
+    #  - 6379:6379
+    networks:
+      - back_network
   #
   ##
   #
@@ -20,11 +29,13 @@ services:
       - ./etc/postgres.conf:/var/lib/postgresql/data/postgresql.conf
     env_file:
       - .env
+    networks:
+      - back_network
   #
   ## Cubejs
   #
   cube_api:
-    image: cubejs/cube:${CUBE_VERSION:-v1.1.5}
+    image: cubejs/cube:${CUBE_VERSION:-v1.2.4}
     ports:
       - 4000:4000     # Cubejs API & Playground (dev)
       - 15432:15432   # postgre API
@@ -34,7 +45,7 @@ services:
     env_file:
       - .env
     environment:
-      NODE_ENV: production
+      #NODE_ENV: production
       CUBEJS_EXT_DB_TYPE: cubestore
       CUBEJS_EXT_DB_HOST: cubestore
     depends_on:
@@ -42,11 +53,19 @@ services:
       - cube_refresh_worker
       - cubestore_worker_1
       - cubestore_worker_2
+    networks:
+      - back_network
+      - front_network
+    labels:
+      traefik.enable: true
+      traefik.http.routers.cubeapi.rule: Host(`cubeapi.lab.crossnetcorp.com`)
+      traefik.http.routers.cubeapi.entrypoints: web
+      traefik.http.services.cubeapi.loadbalancer.server.port: 4000
   #
   ##
   #
   cubestore_router:
-    image: cubejs/cube:${CUBE_VERSION:-v1.1.5}
+    image: cubejs/cube:${CUBE_VERSION:-v1.2.4}
     environment:
       CUBESTORE_WORKERS: cubestore_worker_1:10001,cubestore_worker_2:10002
       CUBESTORE_REMOTE_DIR: /cube/data
@@ -56,11 +75,13 @@ services:
       - .cubestore:/cube/data
     env_file:
       - .env
+    networks:
+      - back_network
   #
   ##
   #
   cubestore_worker_1:
-    image: cubejs/cube:${CUBE_VERSION:-v1.1.5}
+    image: cubejs/cube:${CUBE_VERSION:-v1.2.4}
     environment:
       CUBESTORE_WORKERS: cubestore_worker_1:10001,cubestore_worker_2:10002
       CUBESTORE_SERVER_NAME: cubestore_worker_1:10001
@@ -73,11 +94,13 @@ services:
       - .env
     depends_on:
       - cubestore_router
+    networks:
+      - back_network
   #
   ##
   #
   cubestore_worker_2:
-    image: cubejs/cube:${CUBE_VERSION:-v1.1.5}
+    image: cubejs/cube:${CUBE_VERSION:-v1.2.4}
     environment:
       CUBESTORE_WORKERS: cubestore_worker_1:10001,cubestore_worker_2:10002
       CUBESTORE_SERVER_NAME: cubestore_worker_2:10002
@@ -90,15 +113,20 @@ services:
       - .env
     depends_on:
       - cubestore_router
+    networks:
+      - back_network
+
   #
   ## Refresh Worker
   #
   cube_refresh_worker:
-    image: cubejs/cube:${CUBE_VERSION:-v1.1.5}
+    image: cubejs/cube:${CUBE_VERSION:-v1.2.4}
     environment:
       CUBEJS_REFRESH_WORKER: true
     env_file:
       - .env
+    networks:
+      - back_network
   #
   ## Cubestore
   #
@@ -110,15 +138,54 @@ services:
       CUBESTORE_REMOTE_DIR: /cube/data
     volumes:
       - .cubestore:/cube/data
+    networks:
+      - back_network
   #
   ## Hasura
   #
-  hasura:
-    image: hasura/graphql-engine:${HASURA_VERSION:-v1.3.2}
+  #hasura:
+  #  image: hasura/graphql-engine:${HASURA_VERSION:-v1.3.2}
+  #  ports:
+  #    - "8080:8080"
+  #  depends_on:
+  #    - postgres
+  #    - cube_api
+  #  env_file:
+  #    - .env
+
+  #
+  ## Traefik
+  #
+  traefik:
+    image: traefik:${TRAEFIK_VERSION:-v3}
     ports:
       - "8080:8080"
-    depends_on:
-      - postgres
-      - cube_api
-    env_file:
-      - .env
+      - "80:80"
+      - "443:443"
+    volumes:
+      - "./traefik/config.yaml:/etc/traefik/traefik.yaml"
+      - "/var/run/docker.sock:/var/run/docker.sock"
+    labels:
+      traefik.enable: true
+      traefik.http.routers.traefik.rule: Host(`traefik.lab.crossnetcorp.com`)
+      traefik.http.routers.traefik.entrypoints: web
+      traefik.http.services.traefik.loadbalancer.server.port: 8080
+    networks:
+      - front_network
+      - back_network
+  #
+  ## Trino
+  #
+  trino:
+    image: trinodb/trino
+    ports:
+      - "8090:8080"
+    volumes:
+      - "./trino/catalog:/etc/trino/catalog"
+    healthcheck:
+      test: "trino --execute 'SELECT 1' || exit 1"
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - back_network

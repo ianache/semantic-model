@@ -1,0 +1,14 @@
+providers:
+  docker:
+    defaultRule: "Host(`{{ trimPrefix `/` .Name }}.lab.crossnetcorp.com`)"
+
+api:
+  insecure: true
+
+entryPoints:
+  web:
+    address: ":80"
+
+log:
+  level: DEBUG
+

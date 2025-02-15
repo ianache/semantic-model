@@ -8,6 +8,11 @@ cube(`dim_people`, {
   },
   
   dimensions: {
+    username: {
+      sql: `username`,
+      type: `string`
+    },
+    
     fullname: {
       sql: `fullname`,
       type: `string`
@@ -16,17 +21,6 @@ cube(`dim_people`, {
     role: {
       sql: `role`,
       type: `string`
-    },
-    
-    salary: {
-      sql: `salary`,
-      type: `number`
-    },
-    
-    username: {
-      sql: `username`,
-      type: `string`,
-      primary_key: true,
     }
   },
   
